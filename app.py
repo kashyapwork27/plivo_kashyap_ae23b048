@@ -68,7 +68,8 @@ def setup_apis():
 
         # --- Google Cloud Speech ---
         try:
-            credentials_info = st.secrets["GCP_CREDENTIALS"]
+            credentials_json_string = st.secrets["GCP_CREDENTIALS"]
+            credentials_info = json.loads(credentials_json_string) # Add this line
             st.session_state.gcp_credentials = service_account.Credentials.from_service_account_info(credentials_info)
             st.session_state.project_id = credentials_info.get('project_id')
             st.session_state.speech_configured = True
@@ -77,6 +78,7 @@ def setup_apis():
             st.sidebar.warning("⚠️ Google Cloud Speech credentials not found in secrets. Audio transcription will be disabled.")
         except Exception as e:
             st.sidebar.error(f"Error with Speech credentials: {str(e)}")
+    
 
     return st.session_state.get('gemini_configured', False)
 

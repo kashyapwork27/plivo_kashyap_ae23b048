@@ -43,61 +43,42 @@ def authenticate():
 
 # API Setup
 def setup_apis():
-    """Setup Gemini API and optional Google Cloud Speech"""
+    """Setup Gemini API and optional Google Cloud Speech from secrets"""
     if 'gemini_configured' not in st.session_state:
         st.sidebar.markdown("### 🔑 API Configuration")
-        
-        # Gemini API Key
-        st.sidebar.markdown("**Gemini API Key** (Required)")
-        gemini_key = st.sidebar.text_input(
-            "Gemini API Key",
-            type="password",
-            help="Get your free API key from aistudio.google.com"
-        )
-        
-        if gemini_key:
-            try:
-                genai.configure(api_key=gemini_key)
-                # Test the key
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                test_response = model.generate_content("Hello, testing API key")
-                
-                st.session_state.gemini_key = gemini_key
-                st.session_state.gemini_configured = True
-                st.sidebar.success("✅ Gemini API configured!")
-            except Exception as e:
-                st.sidebar.error(f"❌ Invalid Gemini API key: {str(e)}")
-                return False
-        
-        # Optional: Google Cloud Speech for audio transcription
-        st.sidebar.markdown("**Google Cloud Speech** (Optional - for audio)")
-        st.sidebar.markdown("Upload service account JSON for audio transcription:")
-        
-        uploaded_json = st.sidebar.file_uploader(
-            "Service Account JSON (Optional)",
-            type=['json'],
-            help="Only needed for audio transcription feature"
-        )
-        
-        if uploaded_json:
-            try:
-                credentials_info = json.loads(uploaded_json.getvalue().decode())
-                st.session_state.gcp_credentials = service_account.Credentials.from_service_account_info(credentials_info)
-                st.session_state.project_id = credentials_info.get('project_id')
-                st.session_state.speech_configured = True
-                st.sidebar.success("✅ Speech-to-Text configured!")
-            except Exception as e:
-                st.sidebar.error(f"Error with Speech credentials: {str(e)}")
-        
-        if not gemini_key:
-            st.sidebar.warning("Please add your Gemini API key to continue")
-            st.sidebar.markdown("[Get your free API key here](https://aistudio.google.com)")
+
+        # --- Gemini API Key ---
+        try:
+            gemini_key = st.secrets["GEMINI_API_KEY"]
+            genai.configure(api_key=gemini_key)
+            
+            # Test the key
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            model.generate_content("Hello, testing API key")
+            
+            st.session_state.gemini_key = gemini_key
+            st.session_state.gemini_configured = True
+            st.sidebar.success("✅ Gemini API configured!")
+        except KeyError:
+            st.sidebar.error("❌ Gemini API key not found in secrets.toml")
             return False
-        
-        return st.session_state.get('gemini_configured', False)
-    else:
-        genai.configure(api_key=st.session_state.gemini_key)
-        return True
+        except Exception as e:
+            st.sidebar.error(f"❌ Invalid Gemini API key: {str(e)}")
+            return False
+
+        # --- Google Cloud Speech ---
+        try:
+            credentials_info = st.secrets["GCP_CREDENTIALS"]
+            st.session_state.gcp_credentials = service_account.Credentials.from_service_account_info(credentials_info)
+            st.session_state.project_id = credentials_info.get('project_id')
+            st.session_state.speech_configured = True
+            st.sidebar.success("✅ Speech-to-Text configured!")
+        except KeyError:
+            st.sidebar.warning("⚠️ Google Cloud Speech credentials not found in secrets. Audio transcription will be disabled.")
+        except Exception as e:
+            st.sidebar.error(f"Error with Speech credentials: {str(e)}")
+
+    return st.session_state.get('gemini_configured', False)
 
 def analyze_image_gemini(image_bytes):
     """Analyze image using Gemini multimodal model"""

@@ -8,3 +8,4 @@ beautifulsoup4
 requests
 Pillow
 PyMuPDF
+json
